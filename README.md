@@ -1,0 +1,1 @@
+https://ayende.com/blog/176034/making-code-faster-the-interview-question
