@@ -1,8 +1,8 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -14,30 +14,34 @@ func main() {
 }
 
 func report(in, out string) {
-	bytes, _ := ioutil.ReadFile(in)
-	content := string(bytes)
-	lines := strings.Split(content, "\r\n")
+	inFile, _ := os.Open(in)
+	defer inFile.Close()
 
 	durations := make(map[int]float64)
+	scanner := bufio.NewScanner(inFile)
 
-	for _, line := range lines {
-		if line != "" {
-			record := newCarRecord(line)
-			duration := record.End.Sub(record.Start).Seconds()
-			if _, ok := durations[record.ID]; ok {
-				durations[record.ID] += duration
-			} else {
-				durations[record.ID] = duration
-			}
+	for scanner.Scan() {
+		record := newCarRecord(scanner.Text())
+		duration := record.End.Sub(record.Start).Seconds()
+		if _, ok := durations[record.ID]; ok {
+			durations[record.ID] += duration
+		} else {
+			durations[record.ID] = duration
 		}
 	}
 
-	var sb strings.Builder
-	for id, duration := range durations {
-		sb.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error scanning file %s %v\n", in, err)
+		return
 	}
 
-	ioutil.WriteFile(out, []byte(sb.String()), 0644)
+	outFile, _ := os.Create(out)
+	defer outFile.Close()
+
+	writer := bufio.NewWriter(outFile)
+	for id, duration := range durations {
+		writer.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
+	}
 }
 
 type carRecord struct {
