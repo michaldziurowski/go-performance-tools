@@ -3,13 +3,17 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
-	"strconv"
 	"time"
 )
 
 func main() {
 	report(os.Args[1], os.Args[2])
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter text: ")
+	text, _ := reader.ReadString('\n')
+	fmt.Println(text)
 }
 
 func report(in, out string) {
@@ -37,25 +41,27 @@ func report(in, out string) {
 func newCarRecord(b []byte) (int, int) {
 	start := parseTime(b[:19])
 	end := parseTime(b[20:39])
-	id, _ := strconv.Atoi(string(b[40:48]))
+	id := fromBytes(b[40:48])
 
 	return id, int(end.Sub(start).Seconds())
 }
 
 func parseTime(b []byte) time.Time {
-	y := from4digit(b[:4])
-	m := time.Month(from2digit(b[5:7]))
-	d := from2digit(b[8:10])
-	h := from2digit(b[11:13])
-	mi := from2digit(b[14:16])
-	s := from2digit(b[17:19])
+	y := fromBytes(b[:4])
+	m := time.Month(fromBytes(b[5:7]))
+	d := fromBytes(b[8:10])
+	h := fromBytes(b[11:13])
+	mi := fromBytes(b[14:16])
+	s := fromBytes(b[17:19])
 	return time.Date(y, m, d, h, mi, s, 0, time.UTC)
 }
 
-func from4digit(b []byte) int {
-	return int(b[0]-'0')*1000 + int(b[1]-'0')*100 + int(b[2]-'0')*10 + int(b[3]-'0')
-}
-
-func from2digit(b []byte) int {
-	return int(b[0]-'0')*10 + int(b[1]-'0')
+func fromBytes(by []byte) int {
+	result := 0
+	idx := 0
+	for i := len(by) - 1; i >= 0; i-- {
+		result += int(by[i]-'0') * int(math.Pow10(idx))
+		idx++
+	}
+	return result
 }
