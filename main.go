@@ -32,12 +32,12 @@ func report(in, out string) {
 		}
 	}
 
-	output := ""
+	var sb strings.Builder
 	for id, duration := range durations {
-		output += fmt.Sprintf("%10d %20.0f\r\n", id, duration)
+		sb.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
 	}
 
-	ioutil.WriteFile(out, []byte(output), 0644)
+	ioutil.WriteFile(out, []byte(sb.String()), 0644)
 }
 
 type carRecord struct {
