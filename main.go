@@ -34,7 +34,7 @@ func report(in, out string) {
 
 	output := ""
 	for id, duration := range durations {
-		output += fmt.Sprintf("%10d %20.0f\r\n", id, duration)
+		output += fmt.Sprintf("%d %.0f\r\n", id, duration)
 	}
 
 	ioutil.WriteFile(out, []byte(output), 0644)
