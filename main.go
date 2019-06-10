@@ -9,30 +9,18 @@ import (
 )
 
 func main() {
-	// report(os.Args[1], os.Args[2])
-	report("data.txt", "summary.txt")
+	report(os.Args[1], os.Args[2])
 }
 
 func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
-	durations := make(map[int]float64)
+	durations := [203221]int{}
 	scanner := bufio.NewScanner(inFile)
-
 	for scanner.Scan() {
-		record := newCarRecord(scanner.Bytes())
-		duration := record.End.Sub(record.Start).Seconds()
-		if _, ok := durations[record.ID]; ok {
-			durations[record.ID] += duration
-		} else {
-			durations[record.ID] = duration
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error scanning file %s %v\n", in, err)
-		return
+		id, duration := newCarRecord(scanner.Bytes())
+		durations[id] += duration
 	}
 
 	outFile, _ := os.Create(out)
@@ -40,23 +28,18 @@ func report(in, out string) {
 
 	writer := bufio.NewWriter(outFile)
 	for id, duration := range durations {
-		writer.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
+		if duration > 0 {
+			writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
+		}
 	}
 }
 
-type carRecord struct {
-	Start time.Time
-	End   time.Time
-	ID    int
-}
-
-func newCarRecord(b []byte) carRecord {
-
+func newCarRecord(b []byte) (int, int) {
 	start := parseTime(b[:19])
 	end := parseTime(b[20:39])
 	id, _ := strconv.Atoi(string(b[40:48]))
 
-	return carRecord{start, end, id}
+	return id, int(end.Sub(start).Seconds())
 }
 
 func parseTime(b []byte) time.Time {
