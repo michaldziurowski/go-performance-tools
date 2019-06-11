@@ -20,7 +20,7 @@ func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
-	durations := [203221]int{}
+	durations := map[int]int{}
 	scanner := bufio.NewScanner(inFile)
 	for scanner.Scan() {
 		id, duration := newCarRecord(scanner.Bytes())
