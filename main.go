@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -16,16 +17,37 @@ func main() {
 	fmt.Println(text)
 }
 
+type record struct {
+	ID       int
+	Duration int
+}
+
 func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
+	wg := &sync.WaitGroup{}
+
+	jobsC := make(chan []byte, 100)
+	durationsC := make(chan record, 100)
 	durations := map[int]int{}
+	doneC := make(chan bool)
+
+	for i := 0; i < 100; i++ {
+		go newCarRecord(jobsC, durationsC, wg)
+	}
+
+	go addDuration(durations, durationsC, doneC)
+
 	scanner := bufio.NewScanner(inFile)
 	for scanner.Scan() {
-		id, duration := newCarRecord(scanner.Bytes())
-		durations[id] += duration
+		wg.Add(1)
+		jobsC <- scanner.Bytes()
 	}
+	close(jobsC)
+	wg.Wait()
+	close(durationsC)
+	<-doneC
 
 	outFile, _ := os.Create(out)
 	defer outFile.Close()
@@ -38,12 +60,26 @@ func report(in, out string) {
 	}
 }
 
-func newCarRecord(b []byte) (int, int) {
-	start := parseTime(b[:19])
-	end := parseTime(b[20:39])
-	id := fromBytes(b[40:48])
+func addDuration(durations map[int]int, durationsC chan record, doneC chan bool) {
+	for {
+		if r, more := <-durationsC; more {
+			durations[r.ID] += r.Duration
+		} else {
+			doneC <- true
+			return
+		}
+	}
+}
 
-	return id, int(end.Sub(start).Seconds())
+func newCarRecord(jobs <-chan []byte, durationsC chan record, wg *sync.WaitGroup) {
+	for b := range jobs {
+		start := parseTime(b[:19])
+		end := parseTime(b[20:39])
+		id := fromBytes(b[40:48])
+
+		durationsC <- record{id, int(end.Sub(start).Seconds())}
+		wg.Done()
+	}
 }
 
 func parseTime(b []byte) time.Time {
