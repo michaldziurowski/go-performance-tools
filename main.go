@@ -20,10 +20,19 @@ func report(in, out string) {
 	defer inFile.Close()
 
 	durations := map[int]int{}
-	scanner := bufio.NewScanner(inFile)
-	for scanner.Scan() {
-		id, duration := newCarRecord(scanner.Bytes())
-		durations[id] += duration
+
+	line := make([]byte, 50)
+	r := bufio.NewReader(inFile)
+	done := false
+
+	for !done {
+		read, _ := r.Read(line)
+		if read != 0 {
+			id, duration := newCarRecord(line)
+			durations[id] += duration
+		} else {
+			done = true
+		}
 	}
 
 	outFile, _ := os.Create(out)
