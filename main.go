@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 	"time"
 )
@@ -32,36 +31,36 @@ func report(in, out string) {
 
 	writer := bufio.NewWriter(outFile)
 	for id, duration := range durations {
-		if duration > 0 {
-			writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
-		}
+		writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
 	}
 }
 
 func newCarRecord(b []byte) (int, int) {
 	start := parseTime(b[:19])
 	end := parseTime(b[20:39])
-	id := fromBytes(b[40:48])
+	id := from8Bytes(b[40:48])
 
 	return id, int(end.Sub(start).Seconds())
 }
 
 func parseTime(b []byte) time.Time {
-	y := fromBytes(b[:4])
-	m := time.Month(fromBytes(b[5:7]))
-	d := fromBytes(b[8:10])
-	h := fromBytes(b[11:13])
-	mi := fromBytes(b[14:16])
-	s := fromBytes(b[17:19])
+	y := from4Bytes(b[:4])
+	m := time.Month(from2Bytes(b[5:7]))
+	d := from2Bytes(b[8:10])
+	h := from2Bytes(b[11:13])
+	mi := from2Bytes(b[14:16])
+	s := from2Bytes(b[17:19])
 	return time.Date(y, m, d, h, mi, s, 0, time.UTC)
 }
 
-func fromBytes(by []byte) int {
-	result := 0
-	idx := 0
-	for i := len(by) - 1; i >= 0; i-- {
-		result += int(by[i]-'0') * int(math.Pow10(idx))
-		idx++
-	}
-	return result
+func from2Bytes(by []byte) int {
+	return int(by[0]-'0')*10 + int(by[1]-'0')
+}
+
+func from4Bytes(by []byte) int {
+	return int(by[0]-'0')*1000 + int(by[1]-'0')*100 + int(by[2]-'0')*10 + int(by[3]-'0')
+}
+
+func from8Bytes(by []byte) int {
+	return int(by[0]-'0')*10000000 + int(by[1]-'0')*1000000 + int(by[2]-'0')*1000000 + int(by[3]-'0')*10000 + int(by[4]-'0')*1000 + int(by[5]-'0')*100 + int(by[6]-'0')*10 + int(by[7]-'0')
 }
