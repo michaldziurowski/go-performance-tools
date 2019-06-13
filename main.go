@@ -3,16 +3,15 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
-	"time"
 )
+
+var daysToMonth365 = []int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365}
+var daysToMonth366 = []int{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}
 
 func main() {
 	report(os.Args[1], os.Args[2])
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Enter text: ")
-	text, _ := reader.ReadString('\n')
-	fmt.Println(text)
 }
 
 func report(in, out string) {
@@ -20,16 +19,17 @@ func report(in, out string) {
 	defer inFile.Close()
 
 	durations := map[int]int{}
-
 	line := make([]byte, 50)
+
 	r := bufio.NewReader(inFile)
 	done := false
 
 	for !done {
-		read, _ := r.Read(line)
-		if read != 0 {
+		read, _ := io.ReadFull(r, line)
+		if read == 50 {
 			id, duration := newCarRecord(line)
 			durations[id] += duration
+
 		} else {
 			done = true
 		}
@@ -45,21 +45,34 @@ func report(in, out string) {
 }
 
 func newCarRecord(b []byte) (int, int) {
-	start := parseTime(b[:19])
-	end := parseTime(b[20:39])
+	start := b[:19]
+	end := b[20:39]
 	id := from8Bytes(b[40:48])
 
-	return id, int(end.Sub(start).Seconds())
+	return id, (parseToSeconds(end) - parseToSeconds(start))
 }
 
-func parseTime(b []byte) time.Time {
-	y := from4Bytes(b[:4])
-	m := time.Month(from2Bytes(b[5:7]))
-	d := from2Bytes(b[8:10])
-	h := from2Bytes(b[11:13])
-	mi := from2Bytes(b[14:16])
-	s := from2Bytes(b[17:19])
-	return time.Date(y, m, d, h, mi, s, 0, time.UTC)
+func parseToSeconds(b []byte) int {
+	year := from4Bytes(b[:4])
+	month := from2Bytes(b[5:7])
+	day := from2Bytes(b[8:10])
+	hour := from2Bytes(b[11:13])
+	min := from2Bytes(b[14:16])
+	sec := from2Bytes(b[17:19])
+
+	var leap = year%4 == 0 && (year%100 != 0 || year%400 == 0)
+	var days []int
+	if leap {
+		days = daysToMonth366
+	} else {
+		days = daysToMonth365
+	}
+
+	y := year - 1
+	n := y*365 + y/4 - y/100 + y/400 + days[month-1] + day - 1
+
+	return n*86400 + hour*3600 + min*60 + sec
+
 }
 
 func from2Bytes(by []byte) int {
