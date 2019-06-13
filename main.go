@@ -18,7 +18,8 @@ func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
-	durations := map[int]int{}
+	//durations := map[int]int{}
+	durations := [3000000]int{}
 	line := make([]byte, 50)
 
 	r := bufio.NewReader(inFile)
@@ -29,7 +30,6 @@ func report(in, out string) {
 		if read == 50 {
 			id, duration := newCarRecord(line)
 			durations[id] += duration
-
 		} else {
 			done = true
 		}
@@ -40,7 +40,9 @@ func report(in, out string) {
 
 	writer := bufio.NewWriter(outFile)
 	for id, duration := range durations {
-		writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
+		if duration != 0 {
+			writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
+		}
 	}
 }
 
