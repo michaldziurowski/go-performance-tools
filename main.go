@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,23 +19,26 @@ func report(in, out string) {
 	content := string(bytes)
 	lines := strings.Split(content, "\r\n")
 
-	durations := make(map[int]float64)
-
+	durations := NewRegularIntMap()
+	wg := &sync.WaitGroup{}
 	for _, line := range lines {
+		wg.Add(1)
 		if line != "" {
-			record := newCarRecord(line)
-			duration := record.End.Sub(record.Start).Seconds()
-			if _, ok := durations[record.ID]; ok {
-				durations[record.ID] += duration
-			} else {
-				durations[record.ID] = duration
-			}
+			go func(l string) {
+				record := newCarRecord(l)
+				duration := record.End.Sub(record.Start).Seconds()
+				durations.IncreaseStore(record.ID, int(duration))
+				wg.Done()
+			}(line)
+		} else {
+			wg.Done()
 		}
 	}
 
+	wg.Wait()
 	var sb strings.Builder
-	for id, duration := range durations {
-		sb.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
+	for id, duration := range durations.internal {
+		sb.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
 	}
 
 	ioutil.WriteFile(out, []byte(sb.String()), 0644)
@@ -54,4 +58,21 @@ func newCarRecord(line string) carRecord {
 	id, _ := strconv.Atoi(parts[2])
 
 	return carRecord{start, end, id}
+}
+
+type RegularIntMap struct {
+	sync.Mutex
+	internal map[int]int
+}
+
+func NewRegularIntMap() *RegularIntMap {
+	return &RegularIntMap{
+		internal: make(map[int]int),
+	}
+}
+
+func (rm *RegularIntMap) IncreaseStore(key, value int) {
+	rm.Lock()
+	rm.internal[key] += value
+	rm.Unlock()
 }
