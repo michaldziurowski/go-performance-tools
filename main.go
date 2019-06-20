@@ -42,6 +42,8 @@ func report(in, out string) {
 	for id, duration := range durations {
 		writer.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
 	}
+
+	writer.Flush()
 }
 
 type carRecord struct {
