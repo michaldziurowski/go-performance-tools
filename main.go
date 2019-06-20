@@ -33,6 +33,8 @@ func report(in, out string) {
 	for id, duration := range durations {
 		writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
 	}
+
+	writer.Flush()
 }
 
 func newCarRecord(b []byte) (int, int) {
