@@ -3,8 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
+
+	"golang.org/x/exp/mmap"
 )
 
 var daysToMonth365 = []int{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365}
@@ -21,18 +22,23 @@ func report(in, out string) {
 	durations := map[int]int{}
 	line := make([]byte, 50)
 
-	r := bufio.NewReader(inFile)
-	done := false
+	reader, err := mmap.Open(in)
 
-	for !done {
-		read, _ := io.ReadFull(r, line)
-		if read == 50 {
-			id, duration := newCarRecord(line)
-			durations[id] += duration
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
 
-		} else {
-			done = true
+	defer reader.Close()
+
+	var noOfLines = reader.Len() / 50
+
+	for i := 0; i < noOfLines; i++ {
+		num, err := reader.ReadAt(line, int64(50*i))
+		if num < 50 || err != nil {
+			fmt.Printf("read %v bytes", num)
 		}
+		id, duration := newCarRecord(line)
+		durations[id] += duration
 	}
 
 	outFile, _ := os.Create(out)
