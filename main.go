@@ -19,8 +19,9 @@ func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
+	cDurations := make(chan map[int]int)
 	durations := map[int]int{}
-	line := make([]byte, 50)
+	//line := make([]byte, 50)
 
 	reader, err := mmap.Open(in)
 
@@ -30,15 +31,26 @@ func report(in, out string) {
 
 	defer reader.Close()
 
-	var noOfLines = reader.Len() / 50
+	noOfLines := reader.Len() / 50
 
-	for i := 0; i < noOfLines; i++ {
-		num, err := reader.ReadAt(line, int64(50*i))
-		if num < 50 || err != nil {
-			fmt.Printf("read %v bytes", num)
+	noOfWorkers := 4
+	workerBatch := noOfLines / noOfWorkers
+
+	for j := 0; j < noOfWorkers; j++ {
+		if j == (noOfWorkers - 1) {
+			go doStuff(reader, cDurations, j*workerBatch, workerBatch+(noOfLines%noOfWorkers))
+		} else {
+			go doStuff(reader, cDurations, j*workerBatch, workerBatch)
 		}
-		id, duration := newCarRecord(line)
-		durations[id] += duration
+
+	}
+
+	for i := 0; i < noOfWorkers; i++ {
+		workerDurations := <-cDurations
+
+		for id, duration := range workerDurations {
+			durations[id] += duration
+		}
 	}
 
 	outFile, _ := os.Create(out)
@@ -50,6 +62,21 @@ func report(in, out string) {
 	}
 
 	writer.Flush()
+}
+
+func doStuff(reader *mmap.ReaderAt, c chan map[int]int, start int, noOfLines int) {
+	durations := map[int]int{}
+	line := make([]byte, 50)
+	for i := start; i < (noOfLines + start); i++ {
+		num, err := reader.ReadAt(line, int64(50*i))
+		if num < 50 || err != nil {
+			fmt.Printf("read %v bytes", num)
+		}
+		id, duration := newCarRecord(line)
+		durations[id] += duration
+	}
+
+	c <- durations
 }
 
 func newCarRecord(b []byte) (int, int) {
