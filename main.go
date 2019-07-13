@@ -19,8 +19,8 @@ func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
-	cDurations := make(chan map[int]int)
-	durations := map[int]int{}
+	cDurations := make(chan []int)
+	durations := make([]int, 2010000)
 
 	reader, err := mmap.Open(in)
 
@@ -57,14 +57,16 @@ func report(in, out string) {
 
 	writer := bufio.NewWriter(outFile)
 	for id, duration := range durations {
-		writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
+		if duration != 0 {
+			writer.WriteString(fmt.Sprintf("%d %d\r\n", id, duration))
+		}
 	}
 
 	writer.Flush()
 }
 
-func calculateBatch(reader *mmap.ReaderAt, results chan map[int]int, start int, noOfLines int) {
-	durations := map[int]int{}
+func calculateBatch(reader *mmap.ReaderAt, results chan []int, start int, noOfLines int) {
+	durations := make([]int, 2010000)
 	line := make([]byte, 50)
 	for i := start; i < (noOfLines + start); i++ {
 		num, err := reader.ReadAt(line, int64(50*i))
