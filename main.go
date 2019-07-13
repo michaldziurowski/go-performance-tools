@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -18,20 +17,29 @@ func report(in, out string) {
 	inFile, _ := os.Open(in)
 	defer inFile.Close()
 
+	cDurations := make(chan map[int]int)
 	durations := map[int]int{}
-	line := make([]byte, 50)
 
-	r := bufio.NewReader(inFile)
-	done := false
+	fStat, _ := inFile.Stat()
+	noOfLines := int(fStat.Size() / 50)
 
-	for !done {
-		read, _ := io.ReadFull(r, line)
-		if read == 50 {
-			id, duration := newCarRecord(line)
-			durations[id] += duration
+	noOfWorkers := 4
+	workerBatch := noOfLines / noOfWorkers
 
+	for j := 0; j < noOfWorkers; j++ {
+		if j == (noOfWorkers - 1) {
+			go calculateBatch(inFile, cDurations, j*workerBatch, workerBatch+(noOfLines%noOfWorkers))
 		} else {
-			done = true
+			go calculateBatch(inFile, cDurations, j*workerBatch, workerBatch)
+		}
+
+	}
+
+	for i := 0; i < noOfWorkers; i++ {
+		workerDurations := <-cDurations
+
+		for id, duration := range workerDurations {
+			durations[id] += duration
 		}
 	}
 
@@ -44,6 +52,21 @@ func report(in, out string) {
 	}
 
 	writer.Flush()
+}
+
+func calculateBatch(reader *os.File, results chan map[int]int, start int, noOfLines int) {
+	durations := map[int]int{}
+	line := make([]byte, 50)
+	for i := start; i < (noOfLines + start); i++ {
+		num, err := reader.ReadAt(line, int64(50*i))
+		if num < 50 || err != nil {
+			fmt.Printf("read %v bytes", num)
+		}
+		id, duration := newCarRecord(line)
+		durations[id] += duration
+	}
+
+	results <- durations
 }
 
 func newCarRecord(b []byte) (int, int) {
