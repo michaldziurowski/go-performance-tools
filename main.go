@@ -21,7 +21,6 @@ func report(in, out string) {
 
 	cDurations := make(chan map[int]int)
 	durations := map[int]int{}
-	//line := make([]byte, 50)
 
 	reader, err := mmap.Open(in)
 
@@ -38,9 +37,9 @@ func report(in, out string) {
 
 	for j := 0; j < noOfWorkers; j++ {
 		if j == (noOfWorkers - 1) {
-			go doStuff(reader, cDurations, j*workerBatch, workerBatch+(noOfLines%noOfWorkers))
+			go calculateBatch(reader, cDurations, j*workerBatch, workerBatch+(noOfLines%noOfWorkers))
 		} else {
-			go doStuff(reader, cDurations, j*workerBatch, workerBatch)
+			go calculateBatch(reader, cDurations, j*workerBatch, workerBatch)
 		}
 
 	}
@@ -64,7 +63,7 @@ func report(in, out string) {
 	writer.Flush()
 }
 
-func doStuff(reader *mmap.ReaderAt, c chan map[int]int, start int, noOfLines int) {
+func calculateBatch(reader *mmap.ReaderAt, results chan map[int]int, start int, noOfLines int) {
 	durations := map[int]int{}
 	line := make([]byte, 50)
 	for i := start; i < (noOfLines + start); i++ {
@@ -76,7 +75,7 @@ func doStuff(reader *mmap.ReaderAt, c chan map[int]int, start int, noOfLines int
 		durations[id] += duration
 	}
 
-	c <- durations
+	results <- durations
 }
 
 func newCarRecord(b []byte) (int, int) {
