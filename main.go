@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -19,18 +20,24 @@ func report(in, out string) {
 	lines := strings.Split(content, "\r\n")
 
 	durations := make(map[int]float64)
+	wg := &sync.WaitGroup{}
+	mu := &sync.Mutex{}
 
 	for _, line := range lines {
-		if line != "" {
-			record := newCarRecord(line)
-			duration := record.End.Sub(record.Start).Seconds()
-			if _, ok := durations[record.ID]; ok {
+		wg.Add(1)
+		go (func() {
+			if line != "" {
+				record := newCarRecord(line)
+				duration := record.End.Sub(record.Start).Seconds()
+				mu.Lock()
 				durations[record.ID] += duration
-			} else {
-				durations[record.ID] = duration
+				mu.Unlock()
 			}
-		}
+			wg.Done()
+		})()
 	}
+
+	wg.Wait()
 
 	var sb strings.Builder
 	for id, duration := range durations {
