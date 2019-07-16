@@ -20,8 +20,8 @@ func report(in, out string) {
 	lines := strings.Split(content, "\r\n")
 
 	durations := make(map[int]float64)
-	wg := &sync.WaitGroup{}
-	mu := &sync.Mutex{}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
 	noOfWorkers := 4
 	cWork := make(chan []string, 100)
@@ -29,14 +29,16 @@ func report(in, out string) {
 	for i := 0; i < noOfWorkers; i++ {
 		go func() {
 			for l := range cWork {
-				for i := 0; i < len(l); i++ {
-					line := l[i]
+				for x := 0; x < len(l); x++ {
+					line := l[x]
 					if line != "" {
 						record := newCarRecord(line)
 						duration := record.End.Sub(record.Start).Seconds()
 						mu.Lock()
 						durations[record.ID] += duration
 						mu.Unlock()
+					} else {
+						fmt.Printf("Received empty line\n")
 					}
 				}
 			}
@@ -47,28 +49,22 @@ func report(in, out string) {
 
 	wg.Add(noOfWorkers)
 
-	linesSlice := make([]string, 100)
-	counter := 0
+	linesLen := len(lines)
+	divider := 100000
+	times := int(linesLen / divider)
 
-	for _, line := range lines {
-		if counter == 100 {
-			cWork <- linesSlice
-			counter = 0
-		}
-		linesSlice[counter] = line
-		counter++
+	for y := 0; y < times; y++ {
+		cWork <- lines[y*divider : (y*divider)+divider]
 	}
 
-	if counter != 0 {
-		cWork <- linesSlice[0:counter]
-	}
+	cWork <- lines[times*divider:]
 
 	close(cWork)
 
 	wg.Wait()
 
 	var sb strings.Builder
-
+	fmt.Printf("durations : %v\n", len(durations))
 	for id, duration := range durations {
 		sb.WriteString(fmt.Sprintf("%d %.0f\r\n", id, duration))
 	}
