@@ -15,22 +15,14 @@ func main() {
 }
 
 func report(in, out string) {
-	file, err := os.Open(in)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	defer file.Close()
-
-	bytes, _ := ioutil.ReadFile(in)
-	content := string(bytes)
-	lines := strings.Split(content, "\r\n")
+	inFile, _ := os.Open(in)
+	defer inFile.Close()
 
 	durations := make(map[int]float64)
 	var wg sync.WaitGroup
 
 	noOfWorkers := 4
-	cWork := make(chan []string, 100)
+	cWork := make(chan []byte, 100)
 	cDurations := make(chan map[int]float64, noOfWorkers)
 	cDurationsDone := make(chan interface{})
 
@@ -38,8 +30,8 @@ func report(in, out string) {
 		go func() {
 			locdurations := make(map[int]float64)
 			for l := range cWork {
-				for x := 0; x < len(l); x++ {
-					line := l[x]
+				for x := 0; x < len(l); x += 50 {
+					line := string(l[x : x+48]) // 48 because we dont want to add \r\n
 					if line != "" {
 						record := newCarRecord(line)
 						duration := record.End.Sub(record.Start).Seconds()
@@ -65,15 +57,20 @@ func report(in, out string) {
 
 	wg.Add(noOfWorkers)
 
-	linesLen := len(lines)
+	stat, _ := inFile.Stat()
+	fileSize := int(stat.Size())
 	divider := 100000
-	times := int(linesLen / divider)
+	times := int(fileSize / divider)
 
 	for y := 0; y < times; y++ {
-		cWork <- lines[y*divider : (y*divider)+divider]
+		buf := make([]byte, divider)
+		inFile.Read(buf)
+		cWork <- buf
 	}
 
-	cWork <- lines[times*divider:]
+	buf := make([]byte, fileSize-(times*divider))
+	inFile.Read(buf)
+	cWork <- buf
 
 	close(cWork)
 
