@@ -25,7 +25,6 @@ func report(in, out string) {
 	noOfWorkers := 4
 	cWork := make(chan []byte, 100)
 	cDurations := make(chan map[int]float64, noOfWorkers)
-	cDurationsDone := make(chan interface{})
 
 	for i := 0; i < noOfWorkers; i++ {
 		go func() {
@@ -46,15 +45,6 @@ func report(in, out string) {
 			wg.Done()
 		}()
 	}
-
-	go func() {
-		for d := range cDurations {
-			for id, duration := range d {
-				durations[id] += duration
-			}
-		}
-		cDurationsDone <- nil
-	}()
 
 	wg.Add(noOfWorkers)
 
@@ -77,9 +67,12 @@ func report(in, out string) {
 
 	wg.Wait()
 
-	close(cDurations)
-
-	<-cDurationsDone
+	for i := 0; i < noOfWorkers; i++ {
+		d := <-cDurations
+		for id, duration := range d {
+			durations[id] += duration
+		}
+	}
 
 	var sb strings.Builder
 	fmt.Printf("durations : %v\n", len(durations))
