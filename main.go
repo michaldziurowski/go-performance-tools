@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -57,20 +58,20 @@ func report(in, out string) {
 
 	wg.Add(noOfWorkers)
 
-	stat, _ := inFile.Stat()
-	fileSize := int(stat.Size())
 	divider := 100000
-	times := int(fileSize / divider)
+	readCount := 0
 
-	for y := 0; y < times; y++ {
+	for {
 		buf := make([]byte, divider)
-		inFile.Read(buf)
-		cWork <- buf
-	}
 
-	buf := make([]byte, fileSize-(times*divider))
-	inFile.Read(buf)
-	cWork <- buf
+		read, err := inFile.Read(buf)
+		if err == io.EOF {
+			break
+		}
+
+		cWork <- buf[:read]
+		readCount += read
+	}
 
 	close(cWork)
 
