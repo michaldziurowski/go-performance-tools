@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,8 +32,7 @@ func report(in, out string) {
 			localDurations := make(map[int]float64)
 			for dataRange := range cWork {
 				for x := 0; x < len(dataRange); x += lineLen {
-					line := string(dataRange[x : x+dataInLineLen])
-					record := newCarRecord(line)
+					record := newCarRecord(dataRange[x : x+dataInLineLen])
 					duration := record.End.Sub(record.Start).Seconds()
 					localDurations[record.ID] += duration
 				}
@@ -84,12 +82,32 @@ type carRecord struct {
 	ID    int
 }
 
-func newCarRecord(line string) carRecord {
-	parts := strings.Split(line, " ")
-
-	start, _ := time.Parse("2006-01-02T15:04:05", parts[0])
-	end, _ := time.Parse("2006-01-02T15:04:05", parts[1])
-	id, _ := strconv.Atoi(parts[2])
+func newCarRecord(b []byte) carRecord {
+	start := parseTime(b[:19])
+	end := parseTime(b[20:39])
+	id := from8Bytes(b[40:48])
 
 	return carRecord{start, end, id}
+}
+
+func parseTime(b []byte) time.Time {
+	y := from4Bytes(b[:4])
+	m := time.Month(from2Bytes(b[5:7]))
+	d := from2Bytes(b[8:10])
+	h := from2Bytes(b[11:13])
+	mi := from2Bytes(b[14:16])
+	s := from2Bytes(b[17:19])
+	return time.Date(y, m, d, h, mi, s, 0, time.UTC)
+}
+
+func from2Bytes(by []byte) int {
+	return int(by[0]-'0')*10 + int(by[1]-'0')
+}
+
+func from4Bytes(by []byte) int {
+	return int(by[0]-'0')*1000 + int(by[1]-'0')*100 + int(by[2]-'0')*10 + int(by[3]-'0')
+}
+
+func from8Bytes(by []byte) int {
+	return int(by[0]-'0')*10000000 + int(by[1]-'0')*1000000 + int(by[2]-'0')*1000000 + int(by[3]-'0')*10000 + int(by[4]-'0')*1000 + int(by[5]-'0')*100 + int(by[6]-'0')*10 + int(by[7]-'0')
 }
