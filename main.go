@@ -32,9 +32,8 @@ func report(in, out string) {
 			localDurations := make(map[int]float64)
 			for dataRange := range cWork {
 				for x := 0; x < len(dataRange); x += lineLen {
-					record := newCarRecord(dataRange[x : x+dataInLineLen])
-					duration := record.End.Sub(record.Start).Seconds()
-					localDurations[record.ID] += duration
+					id, duration := newCarRecord(dataRange[x : x+dataInLineLen])
+					localDurations[id] += duration
 				}
 			}
 			cDurations <- localDurations
@@ -76,18 +75,12 @@ func report(in, out string) {
 	ioutil.WriteFile(out, []byte(sb.String()), 0644)
 }
 
-type carRecord struct {
-	Start time.Time
-	End   time.Time
-	ID    int
-}
-
-func newCarRecord(b []byte) carRecord {
+func newCarRecord(b []byte) (int, float64) {
 	start := parseTime(b[:19])
 	end := parseTime(b[20:39])
 	id := from8Bytes(b[40:48])
 
-	return carRecord{start, end, id}
+	return id, end.Sub(start).Seconds()
 }
 
 func parseTime(b []byte) time.Time {
