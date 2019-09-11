@@ -1,9 +1,8 @@
-Some time ago I read a great series of blog posts about making code faster (https://ayende.com/blog/176034/making-code-faster-the-interview-question) the problem described there is easy to understand and the results of performance optimizations are quite impressive. 
-I decided that this example would be a great base for my adventure in exploration of tools for performance analysis in go, so if you are also interested tag along :)
+Some time ago I read a great series of blog posts about [making code faster](https://ayende.com/blog/176034/making-code-faster-the-interview-question), the problem described there is easy to understand and the results of performance optimizations are quite impressive. I decided that this example would be a great base for my adventure in the exploration of tools for performance analysis in go, so if you are also interested tag along :)
 
 ### The problem
 
-Problem as I mentioned is quite simple. Given a text file of parking lot entries calculate how much time each car spend in it.
+The problem, as I mentioned, is quite simple. Given a text file of parking lot entries calculate how much time each car spent in it.
 The file consist of lines (delimited by CRLF) and each line has three columns: time of entry, time of leave and car id.
 
 ```
@@ -86,9 +85,9 @@ I guess its true what some dude on the internet said:
 
 ### Tracing
 
-Ok ~5.3s is not that bad but since we know it can be faster it would be a sin not to try.
-One of the things go is famous for is its support for concurrency so lets try that.
-We will create workers responsible for calculations for given batch of lines.
+Ok, ~5.3s is not that bad but since we know it can be faster it would be a sin not to try.
+One of the things go is famous for is its support for concurrency so let's try that.
+We will create workers responsible for calculations for a given batch of lines.
 
 ```go
 func report(inFileName, outFileName string) {
@@ -103,7 +102,7 @@ func report(inFileName, outFileName string) {
 	cWork := make(chan []string, 100) // channel on which we will be sending batches for workers
 
 	for i := 0; i < noOfWorkers; i++ {
-		go func() { // worker code - receives batch of lines, calculates duration for car and sums it up with previousely calculated values
+		go func() { // worker code - receives a batch of lines, calculates the duration for car and sums it up with reviously calculated values
 			for dataBatch := range cWork {
 				for x := 0; x < len(dataBatch); x++ {
 					line := dataBatch[x]
@@ -147,18 +146,14 @@ func report(inFileName, outFileName string) {
 }
 ```
 
-This runs in ~3.7s. Better but I would expect more :)
-We know what our program is conceptually doing (code tells us that) but can we know what it its really doing ? Sure we can! And here comes the first tool we will use: trace.
-"Trace is a tool for viewing trace files" (dugh! - thanks https://golang.org/cmd/trace/ :) ).
-So what are the trace files ? Trace file is a file with information about go runtime events occured during execution like garbage collections, heap size, scheduling etc
-Enough theory lets generate trace file from the execution of our program.
+This runs in ~3.7s. Better but I would expect more :) We know what our program is conceptually doing (code tells us that) but can we know what it is really doing? Sure we can! And here comes the first tool we will use: trace. “Trace is a tool for viewing trace files” (pff! - thanks https://golang.org/cmd/trace/ :) ). So what are the trace files? A trace file is a file with information about go runtime events that occurred during execution like garbage collections, heap size, scheduling, etc Enough theory lets generate trace file from the execution of our program.
 
 We have several options:
- - explicitly tell our program to emit events to given file using [runtime/trace](https://godoc.org/runtime/trace) package
- - using net/http/pprof if we are creating web services
- - let go test tool gather trace for us 
+- explicitly tell our program to emit events to the given file using runtime/trace package
+- using net/http/pprof if we are creating web services
+- let go test tool gather trace for us
 
-Since I already have a benchmark laying aroung which I used for measuring the execution time (yep using benchmark for time measuring in this case is a bit of overcomplication but since this is an expliration who's going to stop me)
+Since I already have a benchmark laying around which I used for measuring the execution time (yep using a benchmark for time measuring, in this case, is a bit of overcomplication but since this is an exploration who’s going to stop me)
 
 ```go
 package main
@@ -172,19 +167,19 @@ func BenchmarkReport(b *testing.B) {
 }
 ```
 
-I will use the third option to generate trace.
+I will use the third option to generate a trace.
 
 ```
 > go test -bench=BenchmarkReport -trace trace.out
 ```
 
-Now when we have trace file available lets run trace tool 
+Now when we have trace file available let's run trace tool 
 
 ```
 > go tool trace trace.out
 ```
 
-This opens a browser. Lets click on "View trace".
+This opens a browser. Let's click on "View trace".
 
 Note: the trace viewer part of the trace tool works only in Chromium browsers (Chrome).
 
@@ -192,19 +187,20 @@ This is what you should see in the browser:
 
 ![trace_concurrent_1.png](trace_concurrent_1.png)
 
-First section shows you usage of goroutines, heap and threads over time (you guessed it! bigger the bars are the more resource of a type is used).
-The second section shows our go routines work over processor cores.
-For navigation WSAD keys are used (for more options hit "?" key).
-Elements on this screen are clicable if we click around in Proc section we might see the stack trace showing which piece of our code is responsible for the work.
-After closer look two things came to my mind. First it takes aroung 600ms to prepare the data (read from file and split by lines), second there is a lot of work related to locking we do when we are modifying durations map.
+The first section shows you the usage of goroutines, heap and threads over time (you guessed it! bigger the bars are the more resource of a type is used).
+The second section shows our goroutines work over processor cores.
+For navigation, WSAD keys are used (for more options hit "?" key).
+Elements on this screen are clickable if we click around in Proc section we might see the stack trace showing which piece of our code is responsible for the work.
+
+After a closer look, two things came to my mind. First, it takes around 600ms to prepare the data (read from the file and split by lines), second there is a lot of work related to locking we do when we are modifying the durations map.
 
 ![trace_with_stacktrace.png](trace_with_stacktrace.png)
 
-Lets try to do something about it.
+Let's try to do something about it.
 
 ### Profiling
 
-The next improvement idea is not to read whole file upfront but to read batches of file and send them for processing to workers. Each worker will calculate durations based on data batch and send the result to go routine responsible for merging those partial results into one.
+The next improvement idea is not to read the whole file upfront but to read batches of the file and send them for processing to workers. Each worker will calculate durations based on data batch and send the result to goroutine responsible for merging those partial results into one.
 
 ```go
 func report(in, out string) {
@@ -275,9 +271,9 @@ This one takes around 2.8s and the trace looks like this:
 
 ![trace_concurrent_2.png](trace_concurrent_2.png)
 
-As expected this looks different slightly different. There is no initial work related to reading whole file (see how all goroutines are "working" from the beggining?), there is more garbage collections going on (characteristic saw pattern in heap section) and if we click through activities in proc section we will see that instead of locking related activitis now there is a lot of other activities.
+As expected this looks different slightly different. There is no initial work related to reading the whole file (see how all goroutines are "working" from the beginning?), there is more garbage collection going on (characteristic saw pattern in heap section) and if we click through activities in proc section we will see that instead of locking related activities now there is a lot of other stuff.
 
-But what are those other activities ? Which one of them takes the most time (CPU time, not necesserely "real" time)?
+But what are those other activities? Which one of them takes the most time (CPU time, not necessarily "real" time)?
 
 To answer those question we will create a CPU profile of runtime of our application.
 Once again we will do it using test tool but it would also be possible to do it explicitly in code.
@@ -314,21 +310,21 @@ Showing top 10 nodes out of 52
 
 ```
 
-Or we could start a http server to please our eyes with slightly different representation of analytic data:
+Or we could start an http server to please our eyes with a slightly different representation of analytic data:
 
 ```bash
 > go tool pprof --http=:8080 cpu.out 
 ```
 
-On the first screen we will see graph representation (the bigger rectange is the more time is used for this function, red paths represent paths which take the most time).
+On the first screen, we will see graph representation (the bigger rectangle is the more time is used for this function, red paths represent paths which take the most time).
 
 ![pprof_web_view.png](pprof_web_view.png)
 
-But we could also select from "View" menu interactive flame graph (the bigger horizontal bar is the more time is used for this function). May I add... it looks awesome!   
+But we could also select from the "View" menu interactive flame graph (the bigger horizontal bar is the more time is used for this function). May I add... it looks awesome!   
 
 ![pprof_flame_graph.png](pprof_flame_graph.png)
 
-What we learned is that our program spends much time in time.parse. If you think about it (or if you read blog I liked at the beggining) then you might come to an conclusion that you dont need to parse each line to a separate structure and since the date format is the same in each line and known upfront we could do the calculation by ourselfs (in an ugly but efficient way):
+What we learned is that our program spends much time in time.parse. If you think about it (or if you read blog I liked at the beginning) then you might come to an conclusion that you don't need to parse each line to a separate structure and since the date format is the same in each line and known upfront we could do the calculation by ourselves (in an ugly but efficient way):
 
 ```go
 func newCarRecord(b []byte) (int, float64) {
@@ -365,3 +361,9 @@ func from8Bytes(by []byte) int {
 After those changes the code runs in ~0.76s. Quite nice :)
 
 Pst.. this can run even faster. (read the blog series I linked or checkout branch #15)
+
+### Useful links
+- [Inspiration for this notes](https://ayende.com/blog/176034/making-code-faster-the-interview-question)
+- [Dave Cheneys talk on GopherCon](https://www.youtube.com/watch?v=nok0aYiGiYA)
+- [Dave Chaneys notes from performance workshop](https://dave.cheney.net/high-performance-go)
+- [JustForFunc episode on tracing](https://www.youtube.com/watch?v=ySy3sR1LFCQ)
