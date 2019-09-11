@@ -1,7 +1,7 @@
 Some time ago I read a great series of blog posts about making code faster (https://ayende.com/blog/176034/making-code-faster-the-interview-question) the problem described there is easy to understand and the results of performance optimizations are quite impressive. 
 I decided that this example would be a great base for my adventure in exploration of tools for performance analysis in go, so if you are also interested tag along :)
 
-#The problem
+### The problem
 
 Problem as I mentioned is quite simple. Given a text file of parking lot entries calculate how much time each car spend in it.
 The file consist of lines (delimited by CRLF) and each line has three columns: time of entry, time of leave and car id.
@@ -19,7 +19,7 @@ The file consist of lines (delimited by CRLF) and each line has three columns: t
 2015-01-01T10:12:43 2015-01-01T12:36:07 00135455
 ```
 
-#Solution
+### Solution
 
 The straight forward solution could look like this: 
 
@@ -84,7 +84,7 @@ and see what happens, spoiler alert: it then takes around 50s to execute
 I guess its true what some dude on the internet said:
 > Unnecessary memory allocation makes someone cry
 
-#Tracing
+### Tracing
 
 Ok ~5.3s is not that bad but since we know it can be faster it would be a sin not to try.
 One of the things go is famous for is its support for concurrency so lets try that.
@@ -202,7 +202,7 @@ After closer look two things came to my mind. First it takes aroung 600ms to pre
 
 Lets try to do something about it.
 
-#Profiling
+### Profiling
 
 The next improvement idea is not to read whole file upfront but to read batches of file and send them for processing to workers. Each worker will calculate durations based on data batch and send the result to go routine responsible for merging those partial results into one.
 
