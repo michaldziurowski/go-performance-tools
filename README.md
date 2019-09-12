@@ -69,9 +69,9 @@ func report(in, out string) {
 
 This code reads the whole file into memory, splits it by lines, parses each line, calculates duration for each car, sums it with previousely calculated ones and writes results to another file.
 
-Execution of this program takes on my machine around 5,3s.
+Execution of this program takes on my machine around 5.3s.
 
-Fun fuct try to replace string.Builder with string concatenation like this:
+Fun fuct: try to replace string.Builder with string concatenation like this:
 
 ```go
 output := ""
@@ -79,9 +79,7 @@ for id, duration := range durations {
 	output += fmt.Sprintf("%d %.0f\r\n", id, duration)
 }
 ```
-and see what happens, spoiler alert: it then takes around 50s to execute
-I guess its true what some dude on the internet said:
-> Unnecessary memory allocation makes someone cry
+and see what happens. Spoiler alert: it then takes around 50s to execute :D
 
 ### Tracing
 
