@@ -1,3 +1,7 @@
+---
+title: Go performance tools
+---
+
 Some time ago I read a great series of blog posts about [making code faster](https://ayende.com/blog/176034/making-code-faster-the-interview-question), the problem described there is easy to understand and the results of performance optimizations are quite impressive. I decided that this example would be a great base for my adventure in the exploration of tools for performance analysis in go, so if you are also interested tag along :)
 
 ### The problem
@@ -144,7 +148,8 @@ func report(inFileName, outFileName string) {
 }
 ```
 
-This runs in ~3.7s. Better but I would expect more :) We know what our program is conceptually doing (code tells us that) but can we know what it is really doing? Sure we can! And here comes the first tool we will use: trace. “Trace is a tool for viewing trace files” (pff! - thanks https://golang.org/cmd/trace/ :) ). So what are the trace files? A trace file is a file with information about go runtime events that occurred during execution like garbage collections, heap size, scheduling, etc Enough theory lets generate trace file from the execution of our program.
+This runs in ~3.7s. Better but I would expect more :) We know what our program is conceptually doing (code tells us that) but can we know what it is really doing? Sure we can! And here comes the first tool we will use: trace. “Trace is a tool for viewing trace files” (thanks https://golang.org/cmd/trace/ ;) ). So what are the trace files? A trace file is a file with information about go runtime events that occurred during execution like garbage collections, heap size, scheduling, etc.
+Enough theory lets generate trace file from the execution of our program.
 
 We have several options:
 - explicitly tell our program to emit events to the given file using runtime/trace package
@@ -269,7 +274,7 @@ This one takes around 2.8s and the trace looks like this:
 
 ![trace_concurrent_2.png](trace_concurrent_2.png)
 
-As expected this looks different slightly different. There is no initial work related to reading the whole file (see how all goroutines are "working" from the beginning?), there is more garbage collection going on (characteristic saw pattern in heap section) and if we click through activities in proc section we will see that instead of locking related activities now there is a lot of other stuff.
+As expected this looks slightly different. There is no initial work related to reading the whole file (see how all goroutines are "working" from the beginning?), there is more garbage collection going on (characteristic saw pattern in heap section) and if we click through activities in proc section we will see that instead of locking related activities now there is a lot of other stuff.
 
 But what are those other activities? Which one of them takes the most time (CPU time, not necessarily "real" time)?
 
