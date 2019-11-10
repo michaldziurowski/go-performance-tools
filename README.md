@@ -327,7 +327,7 @@ But we could also select from the "View" menu interactive flame graph (the bigge
 
 ![pprof_flame_graph.png](pprof_flame_graph.png)
 
-What we learned is that our program spends much time in time.parse. If you think about it (or if you read blog I liked at the beginning) then you might come to an conclusion that you don't need to parse each line to a separate structure and since the date format is the same in each line and known upfront we could do the calculation by ourselves (in an ugly but efficient way):
+What we learned is that our program spends much time in time.parse. If you think about it (or if you read blog I linked at the beginning) then you might come to an conclusion that you don't need to parse each line to a separate structure and since the date format is the same in each line and known upfront we could do the calculation by ourselves (in an ugly but efficient way):
 
 ```go
 func newCarRecord(b []byte) (int, float64) {
