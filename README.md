@@ -1,3 +1,7 @@
+---
+title: Go performance tools
+---
+
 Some time ago I read a great series of blog posts about [making code faster](https://ayende.com/blog/176034/making-code-faster-the-interview-question), the problem described there is easy to understand and the results of performance optimizations are quite impressive. I decided that this example would be a great base for my adventure in the exploration of tools for performance analysis in go, so if you are also interested tag along :)
 
 ### The problem
